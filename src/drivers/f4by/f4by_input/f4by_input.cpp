@@ -70,6 +70,7 @@ extern "C" uint64_t	ppm_last_valid_decode;
 #include <drivers/drv_rc_input.h>
 #include <drivers/drv_rc.h>
 #include <systemlib/ppm_decode.h>
+#include "sbus.h"
 
 #ifndef ARDUPILOT_BUILD
 # define RC_HANDLING_DEFAULT false
@@ -146,6 +147,7 @@ private:
 
 	void		controls_tick();
 	void		controls_init();
+	int sbus_fd;
 };
 namespace
 {
@@ -229,8 +231,8 @@ F4BY_INPUT::task_main()
 extern "C" int    dsm_init(const char *device);
 extern "C" bool   dsm_input(uint16_t *values, uint16_t *num_values, uint16_t *rssi);
 
-extern "C" int    sbus_init(const char *device);
-extern "C" bool   sbus_input(uint16_t *values, uint16_t *num_values, uint16_t *rssi, uint16_t max_channels);
+//extern "C" int    sbus_init(const char *device);
+//extern "C" bool   sbus_input(uint16_t *values, uint16_t *num_values, uint16_t *rssi, uint16_t max_channels);
 
 static bool
 ppm_input(uint16_t *values, uint16_t *num_values)
@@ -285,7 +287,10 @@ void F4BY_INPUT::controls_tick()
 	else if(_inputType == eSBUS)
 	{
 		//perf_begin(c_gather_sbus);
-		updated = sbus_input(r_raw_rc_values, &r_raw_rc_count, &rssi, 18 /* XXX this should be INPUT channels, once untangled */);
+ 		//sbus_input(int sbus_fd, uint16_t *values, uint16_t *num_values, bool *sbus_failsafe, bool *sbus_frame_drop,  uint16_t max_channels);
+ 		bool sbus_failsafe;
+ 		bool sbus_frame_drop;
+		updated = sbus_input(sbus_fd, r_raw_rc_values, &r_raw_rc_count, &sbus_failsafe, &sbus_frame_drop, 18 /* XXX this should be INPUT channels, once untangled */);
 		//perf_end(c_gather_sbus);
 	}
 	else
@@ -402,7 +407,7 @@ void F4BY_INPUT::controls_init()
 	{
 		//log("S.BUS input");
 		_inputType = eSBUS;
-		sbus_init("/dev/ttyS5");
+		sbus_fd = sbus_init("/dev/ttyS5", false);
 		return;
 	}
 	
